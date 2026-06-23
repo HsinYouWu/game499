@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <title>撲克牌 99 - 多人淘汰版</title>
+  <link rel="manifest" href="manifest.json?v=3">
+  <meta name="theme-color" content="#203a43">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
   <style>
     body {
       margin: 0;
@@ -777,6 +780,12 @@
     }
 
     render();
+    
+        if ("serviceWorker" in navigator) {
+          window.addEventListener("load", () => {
+            navigator.serviceWorker.register("./service-worker.js?v=3");
+          });
+        }
   </script>
 </body>
 </html>
