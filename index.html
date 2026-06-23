@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <title>撲克牌 99 - 多人淘汰版</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: "Microsoft JhengHei", Arial, sans-serif;
+      background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+      color: white;
+      text-align: center;
+      min-height: 100vh;
+    }
+
+    h1 {
+      margin-top: 24px;
+      font-size: 42px;
+      letter-spacing: 4px;
+    }
+
+    .game {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    .panel {
+      background: rgba(255, 255, 255, 0.12);
+      border-radius: 16px;
+      padding: 20px;
+      margin: 16px 0;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+    }
+
+    .score {
+      font-size: 64px;
+      font-weight: bold;
+      margin: 12px 0;
+      color: #ffe066;
+    }
+
+    .info {
+      display: flex;
+      justify-content: space-around;
+      gap: 12px;
+      flex-wrap: wrap;
+      font-size: 20px;
+    }
+
+    select {
+      border: none;
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 18px;
+      font-weight: bold;
+      margin: 8px;
+    }
+
+    .players {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    .playerBox {
+      background: rgba(0, 0, 0, 0.2);
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      border-radius: 14px;
+      padding: 12px;
+    }
+
+    .currentPlayer {
+      border-color: #ffd166;
+      box-shadow: 0 0 16px rgba(255, 209, 102, 0.45);
+    }
+
+    .eliminatedPlayer {
+      opacity: 0.35;
+      text-decoration: line-through;
+    }
+
+    .cards {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 20px;
+    }
+
+    .card {
+      width: 90px;
+      height: 130px;
+      background: white;
+      color: #222;
+      border-radius: 12px;
+      border: 3px solid #ddd;
+      cursor: pointer;
+      font-size: 30px;
+      font-weight: bold;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 10px;
+      box-sizing: border-box;
+      transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s, filter 0.15s;
+      user-select: none;
+    }
+
+    .card:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 10px 20px rgba(0,0,0,0.35);
+    }
+
+    .unsafeCard {
+      opacity: 0.28;
+      filter: grayscale(100%);
+      cursor: not-allowed;
+    }
+
+    .unsafeCard:hover {
+      transform: none;
+      box-shadow: none;
+    }
+
+    .red {
+      color: #d62828;
+    }
+
+    .black {
+      color: #111;
+    }
+
+    .cardEffect {
+      font-size: 15px;
+      color: #444;
+    }
+
+    button {
+      border: none;
+      border-radius: 12px;
+      padding: 12px 24px;
+      font-size: 18px;
+      font-weight: bold;
+      cursor: pointer;
+      background: #ffd166;
+      color: #222;
+      margin: 8px;
+    }
+
+    button:hover {
+      background: #ffb703;
+    }
+
+    .choiceButton, .targetButton {
+      background: #90e0ef;
+    }
+
+    .choiceButton:hover, .targetButton:hover {
+      background: #48cae4;
+    }
+
+    .log {
+      min-height: 140px;
+      max-height: 220px;
+      overflow-y: auto;
+      text-align: left;
+      line-height: 1.6;
+      background: rgba(0,0,0,0.25);
+      border-radius: 12px;
+      padding: 12px;
+      font-size: 16px;
+    }
+
+    .rules {
+      text-align: left;
+      line-height: 1.7;
+      font-size: 16px;
+    }
+
+    .danger {
+      color: #ff6b6b;
+      font-weight: bold;
+    }
+
+    .good {
+      color: #90ee90;
+      font-weight: bold;
+    }
+
+    .hiddenCard {
+      width: 42px;
+      height: 60px;
+      background: linear-gradient(135deg, #3a0ca3, #4361ee);
+      border-radius: 7px;
+      border: 2px solid white;
+      display: inline-block;
+      margin: 3px;
+    }
+
+    #choiceBox, #targetBox {
+      display: none;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="game">
+    <h1>撲克牌 99</h1>
+
+    <div class="panel">
+      <label for="playerCount">玩家數量：</label>
+      <select id="playerCount">
+        <option value="2">2 人</option>
+        <option value="3">3 人</option>
+        <option value="4">4 人</option>
+        <option value="5">5 人</option>
+      </select>
+      <button onclick="newGame()">開始遊戲</button>
+    </div>
+
+    <div class="panel">
+      <div>目前總點數</div>
+      <div id="total" class="score">0</div>
+
+      <div class="info">
+        <div>目前回合：<span id="turnText">玩家 1</span></div>
+        <div>方向：<span id="directionText">順時針</span></div>
+        <div>牌堆剩餘：<span id="deckCount">0</span></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>玩家狀態</h2>
+      <div id="playersStatus" class="players"></div>
+    </div>
+
+    <div class="panel" id="choiceBox">
+      <h2 id="choiceTitle">選擇效果</h2>
+      <button class="choiceButton" id="plusButton">+</button>
+      <button class="choiceButton" id="minusButton">-</button>
+    </div>
+
+    <div class="panel" id="targetBox">
+      <h2>指定下一位玩家</h2>
+      <div id="targetButtons"></div>
+    </div>
+
+    <div class="panel">
+      <h2>你的手牌</h2>
+      <div id="playerCards" class="cards"></div>
+    </div>
+
+    <div class="panel">
+      <h2>遊戲訊息</h2>
+      <div id="log" class="log"></div>
+    </div>
+
+    <div class="panel rules" id="rulesBox">
+      <h2>規則</h2>
+      <p>K：直接變成 99</p>
+      <p>Q：+20 或 -20</p>
+      <p>J：PASS，不改變點數</p>
+      <p>10：+10 或 -10</p>
+      <p>5：指定下一位還沒出局的玩家</p>
+      <p>4：迴轉，改變出牌方向</p>
+      <p>黑桃 A：歸零</p>
+      <p>其他沒講到的牌：加上牌面數值</p>
+    </div>
+  </div>
+
+  <script>
+    const suits = ["♠", "♥", "♦", "♣"];
+    const ranks = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
+    const handSize = 5;
+
+    let deck = [];
+    let players = [];
+    let total = 0;
+    let currentPlayerIndex = 0;
+    let direction = 1;
+    let gameOver = false;
+    let waitingForChoice = false;
+    let waitingForTarget = false;
+    let pendingCard = null;
+    let winnerName = "";
+    let hasStarted = false;
+
+    function createDeck() {
+      const newDeck = [];
+
+      for (const suit of suits) {
+        for (const rank of ranks) {
+          newDeck.push({
+            suit,
+            rank,
+            color: suit === "♥" || suit === "♦" ? "red" : "black"
+          });
+        }
+      }
+
+      return shuffle(newDeck);
+    }
+
+    function shuffle(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+      return array;
+    }
+
+    function getCardNumber(card) {
+      if (card.rank === "A") return 1;
+      if (card.rank === "J") return 11;
+      if (card.rank === "Q") return 12;
+      if (card.rank === "K") return 13;
+      return Number(card.rank);
+    }
+
+    function getEffectText(card) {
+      if (card.rank === "K") return "SET 99";
+      if (card.rank === "Q") return "±20";
+      if (card.rank === "J") return "PASS";
+      if (card.rank === "10") return "±10";
+      if (card.rank === "5") return "指定";
+      if (card.rank === "4") return "迴轉";
+      if (card.suit === "♠" && card.rank === "A") return "歸零";
+      return "+" + getCardNumber(card);
+    }
+
+    function applyCardEffect(card, currentTotal, choice = null) {
+      if (card.rank === "K") return 99;
+
+      if (card.rank === "Q") {
+        if (choice === "plus") return currentTotal + 20;
+        if (choice === "minus") return Math.max(0, currentTotal - 20);
+      }
+
+      if (card.rank === "J") return currentTotal;
+
+      if (card.rank === "10") {
+        if (choice === "plus") return currentTotal + 10;
+        if (choice === "minus") return Math.max(0, currentTotal - 10);
+      }
+
+      if (card.rank === "5") return currentTotal;
+      if (card.rank === "4") return currentTotal;
+      if (card.suit === "♠" && card.rank === "A") return 0;
+
+      return currentTotal + getCardNumber(card);
+    }
+
+    function needsChoice(card) {
+      return card.rank === "Q" || card.rank === "10";
+    }
+
+    function isSafeCard(card) {
+      if (needsChoice(card)) {
+        return applyCardEffect(card, total, "plus") <= 99 || applyCardEffect(card, total, "minus") <= 99;
+      }
+
+      return applyCardEffect(card, total, null) <= 99;
+    }
+
+    function getSafeChoice(card) {
+      if (!needsChoice(card)) return null;
+
+      const plusResult = applyCardEffect(card, total, "plus");
+      const minusResult = applyCardEffect(card, total, "minus");
+
+      if (plusResult <= 99 && plusResult >= minusResult) return "plus";
+      if (minusResult <= 99) return "minus";
+      return "plus";
+    }
+
+    function drawCard(player) {
+      if (deck.length === 0) {
+        logMessage("牌堆用完了，重新洗一副新牌補上。");
+        deck = createDeck();
+      }
+
+      player.hand.push(deck.pop());
+    }
+
+    function newGame() {
+      const playerCount = Number(document.getElementById("playerCount").value);
+
+      deck = createDeck();
+      players = [];
+      total = 0;
+      currentPlayerIndex = 0;
+      direction = 1;
+      gameOver = false;
+      waitingForChoice = false;
+      waitingForTarget = false;
+      pendingCard = null;
+      winnerName = "";
+      hasStarted = true;
+      hideChoiceBox();
+      hideTargetBox();
+      clearLog();
+
+      for (let i = 0; i < playerCount; i++) {
+        players.push({
+          name: i === 0 ? "你" : `AI ${i}`,
+          isHuman: i === 0,
+          active: true,
+          hand: []
+        });
+      }
+
+      for (let i = 0; i < handSize; i++) {
+        players.forEach(player => drawCard(player));
+      }
+
+      logMessage(`遊戲開始！共 ${playerCount} 人，每人一條命。`);
+      render();
+      beginTurn();
+    }
+
+    function getActivePlayers() {
+      return players.filter(player => player.active);
+    }
+
+    function getNextActiveIndex(fromIndex = currentPlayerIndex) {
+      if (getActivePlayers().length <= 1) return fromIndex;
+
+      let index = fromIndex;
+      do {
+        index = (index + direction + players.length) % players.length;
+      } while (!players[index].active);
+
+      return index;
+    }
+
+    function beginTurn() {
+      if (gameOver) return;
+
+      if (!players[currentPlayerIndex].active) {
+        currentPlayerIndex = getNextActiveIndex(currentPlayerIndex);
+      }
+
+      const player = players[currentPlayerIndex];
+      render();
+
+      if (!hasAnySafeCard(player)) {
+        logMessage(`<span class="danger">${player.name} 手牌全部都會爆，直接出局。</span>`);
+        eliminateCurrentPlayer();
+        return;
+      }
+
+      if (!player.isHuman) {
+        setTimeout(aiPlay, 700);
+      }
+    }
+
+    function hasAnySafeCard(player) {
+      return player.hand.some(card => isSafeCard(card));
+    }
+
+    function playPlayerCard(index) {
+      if (gameOver) return;
+      if (waitingForChoice || waitingForTarget) return;
+
+      const player = players[currentPlayerIndex];
+      if (!player.isHuman) return;
+
+      const card = player.hand[index];
+      if (!isSafeCard(card)) {
+        logMessage(`<span class="danger">這張 ${card.suit}${card.rank} 打了會爆，不能出。</span>`);
+        return;
+      }
+
+      player.hand.splice(index, 1);
+
+      if (needsChoice(card)) {
+        pendingCard = card;
+        waitingForChoice = true;
+        showChoiceBox(card);
+        render();
+        return;
+      }
+
+      finishCard(card, null);
+    }
+
+    function finishCard(card, choice) {
+      const player = players[currentPlayerIndex];
+      const oldTotal = total;
+      const newTotal = applyCardEffect(card, total, choice);
+
+      total = newTotal;
+      logCard(player, card, choice, oldTotal, newTotal);
+
+      waitingForChoice = false;
+      pendingCard = null;
+      hideChoiceBox();
+
+      if (total > 99) {
+        total = oldTotal;
+        logMessage(`<span class="danger">${player.name} 爆掉，出局！點數回到 ${total}。</span>`);
+        eliminateCurrentPlayer();
+        return;
+      }
+
+      drawCard(player);
+
+      if (card.rank === "4") {
+        direction *= -1;
+        logMessage(`${player.name} 使用迴轉，方向改成${direction === 1 ? "順時針" : "逆時針"}。`);
+      }
+
+      if (card.rank === "5" && getActivePlayers().length > 2) {
+        if (player.isHuman) {
+          waitingForTarget = true;
+          showTargetBox();
+          render();
+          return;
+        } else {
+          const targetIndex = chooseAITarget();
+          logMessage(`${player.name} 指定 ${players[targetIndex].name} 接著出牌。`);
+          currentPlayerIndex = targetIndex;
+          render();
+          beginTurn();
+          return;
+        }
+      }
+
+      currentPlayerIndex = getNextActiveIndex(currentPlayerIndex);
+      render();
+      beginTurn();
+    }
+
+    function eliminateCurrentPlayer() {
+      const player = players[currentPlayerIndex];
+      player.active = false;
+      player.hand = [];
+      hideChoiceBox();
+      hideTargetBox();
+      waitingForChoice = false;
+      waitingForTarget = false;
+      pendingCard = null;
+
+      const activePlayers = getActivePlayers();
+      if (activePlayers.length === 1) {
+        gameOver = true;
+        winnerName = activePlayers[0].name;
+        logMessage(`<span class="good">${winnerName} 是最後生還者，獲勝！</span>`);
+        render();
+        return;
+      }
+
+      currentPlayerIndex = getNextActiveIndex(currentPlayerIndex);
+      render();
+      setTimeout(beginTurn, 500);
+    }
+
+    function showChoiceBox(card) {
+      const box = document.getElementById("choiceBox");
+      const title = document.getElementById("choiceTitle");
+      const plusButton = document.getElementById("plusButton");
+      const minusButton = document.getElementById("minusButton");
+      const amount = card.rank === "Q" ? 20 : 10;
+      const plusSafe = applyCardEffect(card, total, "plus") <= 99;
+      const minusSafe = applyCardEffect(card, total, "minus") <= 99;
+
+      title.textContent = `你出了 ${card.suit}${card.rank}，選擇 +${amount} 或 -${amount}`;
+      plusButton.textContent = `+${amount}`;
+      minusButton.textContent = `-${amount}`;
+      plusButton.disabled = !plusSafe;
+      minusButton.disabled = !minusSafe;
+      plusButton.style.opacity = plusSafe ? "1" : "0.35";
+      minusButton.style.opacity = minusSafe ? "1" : "0.35";
+
+      plusButton.onclick = () => {
+        if (plusSafe) finishCard(card, "plus");
+      };
+
+      minusButton.onclick = () => {
+        if (minusSafe) finishCard(card, "minus");
+      };
+
+      box.style.display = "block";
+    }
+
+    function hideChoiceBox() {
+      document.getElementById("choiceBox").style.display = "none";
+    }
+
+    function showTargetBox() {
+      const targetButtons = document.getElementById("targetButtons");
+      targetButtons.innerHTML = "";
+
+      if (!hasStarted) {
+        statusDiv.innerHTML = '<p>選好玩家數量後，按「開始遊戲」發牌。</p>';
+        renderHumanCards();
+
+        const totalEl = document.getElementById("total");
+        totalEl.style.color = "#ffe066";
+        return;
+      }
+
+      players.forEach((player, index) => {
+        if (!player.active || index === currentPlayerIndex) return;
+
+        const button = document.createElement("button");
+        button.className = "targetButton";
+        button.textContent = player.name;
+        button.onclick = () => chooseTarget(index);
+        targetButtons.appendChild(button);
+      });
+
+      document.getElementById("targetBox").style.display = "block";
+    }
+
+    function hideTargetBox() {
+      document.getElementById("targetBox").style.display = "none";
+    }
+
+    function chooseTarget(index) {
+      if (!waitingForTarget) return;
+
+      waitingForTarget = false;
+      hideTargetBox();
+      logMessage(`你指定 ${players[index].name} 接著出牌。`);
+      currentPlayerIndex = index;
+      render();
+      beginTurn();
+    }
+
+    function aiPlay() {
+      if (gameOver) return;
+
+      const player = players[currentPlayerIndex];
+      if (!player || !player.active || player.isHuman) return;
+
+      const best = chooseAICard(player);
+      if (!best) {
+        logMessage(`<span class="danger">${player.name} 沒有安全牌，直接出局。</span>`);
+        eliminateCurrentPlayer();
+        return;
+      }
+
+      const card = player.hand.splice(best.index, 1)[0];
+      finishCard(card, best.choice);
+    }
+
+    function chooseAICard(player) {
+      const options = [];
+
+      for (let i = 0; i < player.hand.length; i++) {
+        const card = player.hand[i];
+
+        if (needsChoice(card)) {
+          options.push({ index: i, choice: "plus", result: applyCardEffect(card, total, "plus") });
+          options.push({ index: i, choice: "minus", result: applyCardEffect(card, total, "minus") });
+        } else {
+          options.push({ index: i, choice: null, result: applyCardEffect(card, total, null) });
+        }
+      }
+
+      const safeOptions = options.filter(option => option.result <= 99);
+      if (safeOptions.length === 0) return null;
+
+      safeOptions.sort((a, b) => {
+        const aScore = Math.abs(95 - a.result);
+        const bScore = Math.abs(95 - b.result);
+        return aScore - bScore;
+      });
+
+      return safeOptions[0];
+    }
+
+    function chooseAITarget() {
+      const candidates = players
+        .map((player, index) => ({ player, index }))
+        .filter(item => item.player.active && item.index !== currentPlayerIndex);
+
+      candidates.sort((a, b) => b.player.hand.length - a.player.hand.length);
+      return candidates[0].index;
+    }
+
+    function logCard(player, card, choice, oldTotal, newTotal) {
+      let choiceText = "";
+      if (choice === "plus") choiceText = "，選擇加";
+      if (choice === "minus") choiceText = "，選擇減";
+      logMessage(`${player.name} 出了 ${card.suit}${card.rank}，效果 ${getEffectText(card)}${choiceText}。${oldTotal} → ${newTotal}`);
+    }
+
+    function render() {
+      document.getElementById("total").textContent = total;
+      document.getElementById("deckCount").textContent = deck.length;
+      document.getElementById("directionText").textContent = hasStarted ? (direction === 1 ? "順時針" : "逆時針") : "尚未開始";
+      document.getElementById("turnText").textContent = hasStarted && players[currentPlayerIndex] ? players[currentPlayerIndex].name : "尚未開始";
+
+      const statusDiv = document.getElementById("playersStatus");
+      statusDiv.innerHTML = "";
+
+      players.forEach((player, index) => {
+        const box = document.createElement("div");
+        box.className = "playerBox";
+        if (index === currentPlayerIndex && player.active && !gameOver) box.classList.add("currentPlayer");
+        if (!player.active) box.classList.add("eliminatedPlayer");
+
+        const cardsHtml = player.isHuman || !player.active
+          ? ""
+          : player.hand.map(() => '<span class="hiddenCard"></span>').join("");
+
+        box.innerHTML = `
+          <strong>${player.name}</strong><br>
+          ${player.active ? "存活" : "出局"}<br>
+          手牌：${player.hand.length} 張<br>
+          ${cardsHtml}
+        `;
+        statusDiv.appendChild(box);
+      });
+
+      renderHumanCards();
+
+      const totalEl = document.getElementById("total");
+      if (total >= 90) {
+        totalEl.style.color = "#ff6b6b";
+      } else if (total >= 70) {
+        totalEl.style.color = "#ffd166";
+      } else {
+        totalEl.style.color = "#ffe066";
+      }
+    }
+
+    function renderHumanCards() {
+      const playerCardsDiv = document.getElementById("playerCards");
+      playerCardsDiv.innerHTML = "";
+      const human = players[0];
+
+      if (!hasStarted) {
+        playerCardsDiv.innerHTML = '<p>遊戲還沒開始，請先選玩家數量。</p>';
+        return;
+      }
+
+      if (!human) return;
+
+      if (gameOver && winnerName) {
+        playerCardsDiv.innerHTML = `<p class="good">遊戲結束，${winnerName} 獲勝！</p>`;
+        return;
+      }
+
+      if (!human.active) {
+        playerCardsDiv.innerHTML = '<p class="danger">你已經出局，可以看 AI 們繼續打完。</p>';
+        return;
+      }
+
+      human.hand.forEach((card, index) => {
+        const cardDiv = document.createElement("div");
+        const safe = isSafeCard(card);
+        cardDiv.className = `card ${card.color} ${safe ? "" : "unsafeCard"}`;
+        cardDiv.onclick = () => playPlayerCard(index);
+        cardDiv.title = safe ? "可出牌" : "這張打了會出局";
+
+        cardDiv.innerHTML = `
+          <div>${card.suit}${card.rank}</div>
+          <div class="cardEffect">${getEffectText(card)}</div>
+        `;
+
+        playerCardsDiv.appendChild(cardDiv);
+      });
+    }
+
+    function logMessage(message) {
+      const log = document.getElementById("log");
+      log.innerHTML = message + "<br>" + log.innerHTML;
+    }
+
+    function clearLog() {
+      document.getElementById("log").innerHTML = "";
+    }
+
+    render();
+  </script>
+</body>
+</html>
